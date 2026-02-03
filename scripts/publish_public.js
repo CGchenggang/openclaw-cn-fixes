@@ -151,12 +151,18 @@ function main() {
     const msg = releaseTag ? `Release ${releaseTag}` : `Publish build output`;
     run(`git -C "${tmpRepoDir}" commit -m "${msg.replace(/"/g, '\\"')}"`, { dryRun });
     run(`git -C "${tmpRepoDir}" push origin ${publicBranch}`, { dryRun });
+
+    if (releaseTag) {
+      const tagMsg = releaseTitle || `Release ${releaseTag}`;
+      run(`git -C "${tmpRepoDir}" tag -a ${releaseTag} -m "${tagMsg.replace(/"/g, '\\"')}"`, { dryRun });
+      run(`git -C "${tmpRepoDir}" push origin ${releaseTag}`, { dryRun });
+    }
   }
 
   if (releaseTag) {
-    const msg = releaseTitle || `Release ${releaseTag}`;
-    run(`git tag -a ${releaseTag} -m "${msg.replace(/"/g, '\\"')}"`, { dryRun });
     if (!useBuildOutput) {
+      const msg = releaseTitle || `Release ${releaseTag}`;
+      run(`git tag -a ${releaseTag} -m "${msg.replace(/"/g, '\\"')}"`, { dryRun });
       run(`git push ${publicRemote} ${releaseTag}`, { dryRun });
     }
   }
