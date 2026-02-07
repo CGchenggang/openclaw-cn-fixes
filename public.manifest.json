@@ -23,6 +23,8 @@
     "docs/**",
     "memory/**",
     "dist-public/**",
+    "test/**",
+    "docker-compose.test.yml",
     ".git/**"
   ],
   "rewrite": {

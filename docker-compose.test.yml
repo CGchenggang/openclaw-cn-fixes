@@ -1,0 +1,12 @@
+services:
+  evolver-vibe-test:
+    build:
+      context: .
+      dockerfile: test/Dockerfile
+    environment:
+      - AGENT_NAME=main
+      - EVOLVE_BRIDGE=false
+      - NODE_ENV=test
+    volumes: []
+    working_dir: /workspace/skills/evolver
+    command: ["node", "test/vibe_test.js"]

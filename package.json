@@ -1,6 +1,6 @@
 {
   "name": "evolver",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "A self-evolution engine for AI agents. Features automated log analysis and protocol-constrained evolution with auditable assets.",
   "main": "index.js",
   "keywords": [
@@ -21,7 +21,8 @@
     "solidify": "node index.js solidify",
     "a2a:export": "node scripts/a2a_export.js",
     "a2a:ingest": "node scripts/a2a_ingest.js",
-    "a2a:promote": "node scripts/a2a_promote.js"
+    "a2a:promote": "node scripts/a2a_promote.js",
+    "test:vibe": "docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from evolver-vibe-test"
   },
   "dependencies": {}
 }
