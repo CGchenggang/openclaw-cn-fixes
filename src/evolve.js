@@ -151,45 +151,50 @@ function readRealSessionLog() {
   try {
     if (!fs.existsSync(AGENT_SESSIONS_DIR)) return '[NO SESSION LOGS FOUND]';
 
-    let files = [];
+    const now = Date.now();
+    const ACTIVE_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours
+    const TARGET_BYTES = 120000;
+    const PER_SESSION_BYTES = 20000; // Read tail of each active session
 
-    // Strategy: Node.js native sort (Faster than execSync for <100 files)
-    // Note: performMaintenance() ensures file count stays low (~100 max)
-    files = fs
+    // Find ALL active sessions (modified in last 24h), sorted newest first
+    let files = fs
       .readdirSync(AGENT_SESSIONS_DIR)
-      .filter(f => f.endsWith('.jsonl'))
+      .filter(f => f.endsWith('.jsonl') && !f.includes('.lock'))
       .map(f => {
         try {
-          return { name: f, time: fs.statSync(path.join(AGENT_SESSIONS_DIR, f)).mtime.getTime() };
+          const st = fs.statSync(path.join(AGENT_SESSIONS_DIR, f));
+          return { name: f, time: st.mtime.getTime(), size: st.size };
         } catch (e) {
           return null;
         }
       })
-      .filter(Boolean)
+      .filter(f => f && (now - f.time) < ACTIVE_WINDOW_MS)
       .sort((a, b) => b.time - a.time); // Newest first
 
     if (files.length === 0) return '[NO JSONL FILES]';
 
-    let content = '';
-    const TARGET_BYTES = 100000; // Increased context (was 64000) for smarter evolution
+    // Skip evolver's own sessions to avoid self-reference loops
+    const nonEvolverFiles = files.filter(f => !f.name.startsWith('evolver_hand_'));
+    const activeFiles = nonEvolverFiles.length > 0 ? nonEvolverFiles : files.slice(0, 1);
 
-    // Read the latest file first (efficient tail read)
-    const latestFile = path.join(AGENT_SESSIONS_DIR, files[0].name);
-    content = readRecentLog(latestFile, TARGET_BYTES);
+    // Read from multiple active sessions (up to 6) to get a full picture
+    const maxSessions = Math.min(activeFiles.length, 6);
+    const sections = [];
+    let totalBytes = 0;
 
-    // If content is short (e.g. just started a session), peek at the previous one too
-    if (content.length < TARGET_BYTES && files.length > 1) {
-      const prevFile = path.join(AGENT_SESSIONS_DIR, files[1].name);
-      const needed = TARGET_BYTES - content.length;
-      const prevContent = readRecentLog(prevFile, needed);
-
-      // Format to show continuity
-      content = `\n--- PREVIOUS SESSION (${files[1].name}) ---\n${formatSessionLog(
-        prevContent
-      )}\n\n--- CURRENT SESSION (${files[0].name}) ---\n${formatSessionLog(content)}`;
-    } else {
-      content = formatSessionLog(content);
+    for (let i = 0; i < maxSessions && totalBytes < TARGET_BYTES; i++) {
+      const f = activeFiles[i];
+      const bytesLeft = TARGET_BYTES - totalBytes;
+      const readSize = Math.min(PER_SESSION_BYTES, bytesLeft);
+      const raw = readRecentLog(path.join(AGENT_SESSIONS_DIR, f.name), readSize);
+      const formatted = formatSessionLog(raw);
+      if (formatted.trim()) {
+        sections.push(`--- SESSION (${f.name}) ---\n${formatted}`);
+        totalBytes += formatted.length;
+      }
     }
+
+    let content = sections.join('\n\n');
 
     return content;
   } catch (e) {
