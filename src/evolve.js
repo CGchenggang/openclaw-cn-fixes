@@ -669,7 +669,6 @@ async function run() {
   }
 
   // Maintenance: Clean up old logs to keep directory scan fast
-  // Skip maintenance in dry-run mode to avoid side effects (file moves/deletes).
   if (!IS_DRY_RUN) {
     performMaintenance();
   } else {
@@ -1170,6 +1169,7 @@ async function run() {
   try {
     const runId = `run_${Date.now()}`;
     const parentEventId = getLastEventId();
+    const selectedBy = memoryAdvice && memoryAdvice.preferredGeneId ? 'memory_graph+selector' : 'selector';
 
     // Baseline snapshot (before any edits).
     let baselineUntracked = [];
